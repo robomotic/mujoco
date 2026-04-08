@@ -39,3 +39,35 @@ target_link_options(
   ${MUJOCO_MACOS_LINK_OPTIONS}
   ${EXTRA_LINK_OPTIONS}
 )
+
+# ---------------------------------------------------------------------------
+# Electrical-motor actuator plugin
+# ---------------------------------------------------------------------------
+add_library(actuator_electrical_motor SHARED)
+target_sources(
+  actuator_electrical_motor
+  PRIVATE
+    electrical_motor/electrical_motor.cc
+    electrical_motor/electrical_motor.h
+    electrical_motor/register.cc
+)
+target_include_directories(
+  actuator_electrical_motor
+  PRIVATE
+    ${MUJOCO_ACTUATOR_INCLUDE}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(actuator_electrical_motor PRIVATE mujoco)
+target_compile_options(
+  actuator_electrical_motor
+  PRIVATE ${AVX_COMPILE_OPTIONS}
+          ${MUJOCO_MACOS_COMPILE_OPTIONS}
+          ${EXTRA_COMPILE_OPTIONS}
+          ${MUJOCO_CXX_FLAGS}
+)
+target_link_options(
+  actuator_electrical_motor
+  PRIVATE
+  ${MUJOCO_MACOS_LINK_OPTIONS}
+  ${EXTRA_LINK_OPTIONS}
+)

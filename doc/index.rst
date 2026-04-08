@@ -14,6 +14,7 @@
    programming/index.rst
    APIreference/index.rst
    python
+   Electrical Motors <motors/index.rst>
    MuJoCo XLA <mjx>
    MuJoCo Warp <mjwarp/index.rst>
    unity

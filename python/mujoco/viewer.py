@@ -233,7 +233,11 @@ class Handle:
   def sync(self, state_only: bool = False):
     sim = self._get_sim()
     if sim is not None:
-      sim.sync(state_only)  # locks internally
+      try:
+        sim.sync(state_only)  # locks internally
+      except TypeError:
+        # Installed binary release does not accept state_only argument.
+        sim.sync()
 
   def update_hfield(self, hfieldid: int):
     sim = self._get_sim()
