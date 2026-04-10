@@ -1,0 +1,98 @@
+name: release-python-wheel
+
+on:
+  push:
+    tags:
+      - 'motors-wheel-v*'
+
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to publish'
+        required: true
+        default: 'motors-wheel-v3.7.0-1'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-wheel:
+    name: Build Linux wheel
+    runs-on: ubuntu-24.04
+
+    env:
+      TMPDIR: /tmp
+      CMAKE_ARGS: >-
+        -G Ninja
+        -DCMAKE_C_COMPILER:STRING=gcc-14
+        -DCMAKE_CXX_COMPILER:STRING=g++-14
+        -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Prepare Linux
+      run: bash ./.github/workflows/build_steps.sh prepare_linux
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Prepare Python
+      shell: bash
+      run: bash ./.github/workflows/build_steps.sh prepare_python
+
+    - name: Configure MuJoCo
+      run: bash ./.github/workflows/build_steps.sh configure_mujoco
+
+    - name: Build MuJoCo
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh build_mujoco
+
+    - name: Install MuJoCo
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh install_mujoco
+
+    - name: Copy plugins
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh copy_plugins_posix
+
+    - name: Make Python sdist
+      shell: bash
+      working-directory: python
+      run: bash ../.github/workflows/build_steps.sh make_python_sdist
+
+    - name: Build Python wheel
+      shell: bash
+      working-directory: python/dist
+      run: bash ../../.github/workflows/build_steps.sh build_python_bindings
+
+    - name: Smoke test wheel
+      shell: bash
+      working-directory: python/dist
+      run: |
+        source "${TMPDIR}/venv/bin/activate"
+        pip install --force-reinstall --no-index mujoco-*.whl
+        python - <<'PY'
+        import mujoco
+        print('mujoco version:', mujoco.__version__)
+        print('plugins dir:', mujoco.PLUGINS_DIR)
+        PY
+
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-wheel-${{ env.RELEASE_TAG }}
+        path: |
+          python/dist/*.whl
+          python/dist/*.tar.gz
+
+    - name: Publish GitHub release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        generate_release_notes: true
+        files: |
+          python/dist/*.whl
+          python/dist/*.tar.gz

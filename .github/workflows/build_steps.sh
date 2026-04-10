@@ -106,6 +106,9 @@ copy_plugins_posix() {
     echo "Copying plugins..."
     mkdir -p ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp lib/libactuator.* ${TMPDIR}/mujoco_install/mujoco_plugin &&
+    if compgen -G "lib/libactuator_electrical_motor.*" > /dev/null; then
+        cp lib/libactuator_electrical_motor.* ${TMPDIR}/mujoco_install/mujoco_plugin
+    fi &&
     cp lib/libelasticity.* ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp lib/libobj_decoder.* ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp lib/libstl_decoder.* ${TMPDIR}/mujoco_install/mujoco_plugin &&
@@ -118,6 +121,9 @@ copy_plugins_window() {
     echo "Copying plugins..."
     mkdir -p ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp bin/Release/actuator.dll ${TMPDIR}/mujoco_install/mujoco_plugin &&
+    if [ -f bin/Release/actuator_electrical_motor.dll ]; then
+        cp bin/Release/actuator_electrical_motor.dll ${TMPDIR}/mujoco_install/mujoco_plugin
+    fi &&
     cp bin/Release/elasticity.dll ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp bin/Release/obj_decoder.dll ${TMPDIR}/mujoco_install/mujoco_plugin &&
     cp bin/Release/stl_decoder.dll ${TMPDIR}/mujoco_install/mujoco_plugin &&
