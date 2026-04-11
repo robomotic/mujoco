@@ -98,6 +98,51 @@ Note that Pre-built Linux wheels target `manylinux2014`, see
 information such as building the bindings from source, see the [Python bindings]
 section of the documentation.
 
+### Building a Python wheel from this repo
+
+If you want to build a wheel locally on Linux, the commands below match the
+release flow used for this fork:
+
+```bash
+# From the repository root.
+export TMPDIR=/tmp
+python3.11 -m venv /tmp/mujoco-wheel-venv
+source /tmp/mujoco-wheel-venv/bin/activate
+
+python -m pip install --upgrade --require-hashes -r python/build_requirements.txt
+python -m pip install --upgrade --require-hashes -r python/build_requirements_usd.txt
+
+cmake -S . -B build-wheel \
+  -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+  -DCMAKE_INSTALL_PREFIX="$TMPDIR/mujoco_install" \
+  -DMUJOCO_BUILD_EXAMPLES=OFF
+cmake --build build-wheel --config Release --parallel
+cmake --install build-wheel
+
+mkdir -p "$TMPDIR/mujoco_install/mujoco_plugin"
+cp build-wheel/lib/libactuator* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libelasticity* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libobj_decoder* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libstl_decoder* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libsensor* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libsdf_plugin* "$TMPDIR/mujoco_install/mujoco_plugin/"
+
+(cd python && bash ../.github/workflows/build_steps.sh make_python_sdist)
+(cd python/dist && \
+  MUJOCO_PATH="$TMPDIR/mujoco_install" \
+  MUJOCO_PLUGIN_PATH="$TMPDIR/mujoco_install/mujoco_plugin" \
+  MUJOCO_CMAKE_ARGS="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=OFF -G Ninja" \
+  pip wheel -v --no-deps mujoco-*.tar.gz)
+```
+
+This produces the wheel in `python/dist/`. Use Python `>=3.10` (`3.11`
+recommended) and a compiler with C++20 support, such as GCC 10+ or Clang 13+.
+For this fork, pushing a tag that matches `motors-wheel-v*` also triggers the
+GitHub Actions release workflow and uploads the wheel to the repo’s Releases
+page automatically.
+
 ## Versioning
 
 We aim to release MuJoCo in the first week of each month. Our versioning

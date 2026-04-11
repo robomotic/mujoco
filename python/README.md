@@ -44,6 +44,42 @@ PyPI.
 If you need to build the Python bindings from source, please consult
 [the documentation](https://mujoco.readthedocs.io/en/latest/python.html#building-from-source).
 
+If you want to build a wheel from this repository, from the repo root run:
+
+```sh
+export TMPDIR=/tmp
+python3.11 -m venv /tmp/mujoco-wheel-venv
+source /tmp/mujoco-wheel-venv/bin/activate
+python -m pip install --upgrade --require-hashes -r python/build_requirements.txt
+python -m pip install --upgrade --require-hashes -r python/build_requirements_usd.txt
+
+cmake -S . -B build-wheel -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+  -DCMAKE_INSTALL_PREFIX="$TMPDIR/mujoco_install" \
+  -DMUJOCO_BUILD_EXAMPLES=OFF
+cmake --build build-wheel --config Release --parallel
+cmake --install build-wheel
+
+mkdir -p "$TMPDIR/mujoco_install/mujoco_plugin"
+cp build-wheel/lib/libactuator* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libelasticity* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libobj_decoder* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libstl_decoder* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libsensor* "$TMPDIR/mujoco_install/mujoco_plugin/"
+cp build-wheel/lib/libsdf_plugin* "$TMPDIR/mujoco_install/mujoco_plugin/"
+
+(cd python && bash ../.github/workflows/build_steps.sh make_python_sdist)
+(cd python/dist && \
+  MUJOCO_PATH="$TMPDIR/mujoco_install" \
+  MUJOCO_PLUGIN_PATH="$TMPDIR/mujoco_install/mujoco_plugin" \
+  MUJOCO_CMAKE_ARGS="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=OFF -G Ninja" \
+  pip wheel -v --no-deps mujoco-*.tar.gz)
+```
+
+The resulting wheel will be written to `python/dist/`. Use Python `>=3.10`
+(`3.11` recommended) and GCC 10+ or Clang 13+.
+
 ## Usage
 
 Once installed, the package can be imported via `import mujoco`. Please consult
