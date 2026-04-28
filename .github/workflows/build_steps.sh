@@ -20,6 +20,9 @@
 prepare_linux() {
     echo "Preparing Linux..."
     sudo apt-get update && sudo apt-get install \
+        build-essential \
+        gcc-14 \
+        g++-14 \
         libgl1-mesa-dev \
         libwayland-dev \
         libxinerama-dev \
