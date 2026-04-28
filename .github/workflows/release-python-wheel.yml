@@ -1,5 +1,9 @@
 name: release-python-wheel
 
+# Builds a single Linux x86_64 wheel targeting Python 3.11 on ubuntu-24.04.
+# This matches the Colab runtime environment (Python 3.11, Ubuntu 22.04/24.04,
+# x86_64). gcc-14 is pre-installed on ubuntu-24.04 so no extra apt work needed.
+
 on:
   push:
     tags:
@@ -17,15 +21,12 @@ permissions:
 
 jobs:
   build-linux-wheel:
-    name: Build Linux wheel (py${{ matrix.python-version }})
+    name: Build Linux wheel (py3.11, ubuntu-24.04)
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11', '3.12']
 
     env:
       TMPDIR: /tmp
+      # gcc-14 is pre-installed on ubuntu-24.04; full paths avoid ambiguity.
       CMAKE_ARGS: >-
         -G Ninja
         -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-14
@@ -41,7 +42,7 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.11'
 
     - name: Prepare Python
       shell: bash
@@ -77,17 +78,17 @@ jobs:
       working-directory: python/dist
       run: |
         source "${TMPDIR}/venv/bin/activate"
-        pip install --force-reinstall --no-index --no-deps mujoco-*.whl
-        python - <<'PY'
+        pip install --no-index mujoco-*.whl
+        python -c "
         import mujoco
         print('mujoco version:', mujoco.__version__)
-        print('plugins dir:', mujoco.PLUGINS_DIR)
-        PY
+        print('plugins dir:   ', mujoco.PLUGINS_DIR)
+        "
 
     - name: Upload wheel artifact
       uses: actions/upload-artifact@v4
       with:
-        name: python-wheel-${{ env.RELEASE_TAG }}-py${{ matrix.python-version }}
+        name: python-wheel-${{ env.RELEASE_TAG }}-py3.11
         path: |
           python/dist/*.whl
           python/dist/*.tar.gz
