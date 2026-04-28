@@ -19,7 +19,7 @@
 
 prepare_linux() {
     echo "Preparing Linux..."
-    sudo apt-get update && sudo apt-get install \
+    sudo apt-get update && sudo apt-get install -y \
         build-essential \
         gcc-14 \
         g++-14 \

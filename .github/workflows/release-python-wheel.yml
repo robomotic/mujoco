@@ -77,7 +77,7 @@ jobs:
       working-directory: python/dist
       run: |
         source "${TMPDIR}/venv/bin/activate"
-        pip install --force-reinstall --no-index mujoco-*.whl
+        pip install --force-reinstall --no-index --no-deps mujoco-*.whl
         python - <<'PY'
         import mujoco
         print('mujoco version:', mujoco.__version__)
