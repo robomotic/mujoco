@@ -28,8 +28,8 @@ jobs:
       TMPDIR: /tmp
       CMAKE_ARGS: >-
         -G Ninja
-        -DCMAKE_C_COMPILER:STRING=gcc-14
-        -DCMAKE_CXX_COMPILER:STRING=g++-14
+        -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-14
+        -DCMAKE_CXX_COMPILER:STRING=/usr/bin/g++-14
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
