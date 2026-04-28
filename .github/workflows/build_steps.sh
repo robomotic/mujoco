@@ -200,6 +200,8 @@ make_python_sdist() {
 build_python_bindings() {
     echo "Building Python bindings..."
     source ${TMPDIR}/venv/bin/activate &&
+    export CC=/usr/bin/gcc-14 &&
+    export CXX=/usr/bin/g++-14 &&
     MUJOCO_PATH="${TMPDIR}/mujoco_install" \
     MUJOCO_PLUGIN_PATH="${TMPDIR}/mujoco_install/mujoco_plugin" \
     MUJOCO_CMAKE_ARGS="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=OFF ${CMAKE_ARGS}" \
