@@ -116,6 +116,9 @@ _XML_TEMPLATE = """\
     <text name="motor_a0"     data="motor_spec:faulhaber_2264w024bp4"/>
     <text name="battery_main" data="battery_spec:unitree_g1_9ah"/>
   </custom>
+  <keyframe>
+    <key name="home" qpos="0 {target_elbow:.4f}"/>
+  </keyframe>
 </mujoco>
 """
 
@@ -173,9 +176,15 @@ def run_scenario(scenario: Scenario, n_steps: int, verbose: bool = True):
         upper_mass=_UPPER_ARM_MASS,
         lower_mass=_LOWER_ARM_MASS,
         payload_mass=scenario.payload_mass,
+        target_elbow=_TARGET_ELBOW,
     )
 
     sim = SingleEnvSimulation.from_xml(xml, kp=220.0, kd=18.0)
+
+    # Start elbow at the target to avoid a 90° initial error that stalls the motor.
+    keyframe_id = mujoco.mj_name2id(sim.model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    if keyframe_id >= 0:
+        mujoco.mj_resetDataKeyframe(sim.model, sim.data, keyframe_id)
     pos_target = np.array([_TARGET_ELBOW])
 
     hist: dict[str, list] = {

@@ -227,6 +227,13 @@ std::unique_ptr<ElectricalMotorConfig> ElectricalMotorConfig::Create(
     cfg->has_thermal = true;
   }
 
+  // Optional drive current limit (stall_current = peak current from drive electronics)
+  double i_max_val = 0.0;
+  if (JsonGetDouble(json, "stall_current", &i_max_val) && i_max_val > 0.0) {
+    cfg->i_max              = i_max_val;
+    cfg->has_current_limit  = true;
+  }
+
   return cfg;
 }
 
@@ -281,6 +288,9 @@ void ElectricalMotorPlugin::ComputeRL(
   double voltage    = mjMAX(cfg.v_min, mjMIN(cfg.v_max, V_term));
   double I_actual   = (voltage - back_emf + cfg.L * I_prev / dt)
                     / (cfg.R + cfg.L / dt);
+  if (cfg.has_current_limit) {
+    I_actual = mjMAX(-cfg.i_max, mjMIN(cfg.i_max, I_actual));
+  }
   torque_out  = mjMAX(-cfg.peak_torque,
                       mjMIN(cfg.peak_torque, cfg.Kt * I_actual));
   current_out = I_actual;
@@ -292,6 +302,10 @@ void ElectricalMotorPlugin::ComputeDegraded(
   double effort_des = cfg.kp * (pos_tgt - pos);
   torque_out  = mjMAX(-cfg.peak_torque, mjMIN(cfg.peak_torque, effort_des));
   current_out = torque_out / cfg.Kt;
+  if (cfg.has_current_limit) {
+    current_out = mjMAX(-cfg.i_max, mjMIN(cfg.i_max, current_out));
+    torque_out  = current_out * cfg.Kt;
+  }
 }
 
 // ---------------------------------------------------------------------------

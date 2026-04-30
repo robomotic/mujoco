@@ -213,12 +213,15 @@ _XML_TEMPLATE = """\
     <text name="battery_main" data="battery_spec:unitree_g1_9ah"/>
   </custom>
   <sensor>
-    <user name="motor_current"  dim="1" cutoff="120.0"/>
+    <user name="motor_current"  dim="1" cutoff="15.0"/>
     <user name="bus_voltage"    dim="1" cutoff="30.0"/>
     <user name="elec_power_w"   dim="1" cutoff="3000.0"/>
     <user name="battery_soc"    dim="1" cutoff="1.0"/>
     <user name="winding_temp_c" dim="1" cutoff="125.0"/>
   </sensor>
+  <keyframe>
+    <key name="home" qpos="0 {target_elbow:.4f}"/>
+  </keyframe>
 </mujoco>
 """
 
@@ -414,8 +417,15 @@ def run_scenario_gui(
         upper_mass=_UPPER_ARM_MASS,
         lower_mass=_LOWER_ARM_MASS,
         payload_mass=scenario.payload_mass,
+        target_elbow=_TARGET_ELBOW,
     )
     sim = SingleEnvSimulation.from_xml(xml, kp=220.0, kd=18.0)
+
+    # Start elbow at the target to avoid a 90° initial error that stalls the motor.
+    keyframe_id = mujoco.mj_name2id(sim.model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    if keyframe_id >= 0:
+        mujoco.mj_resetDataKeyframe(sim.model, sim.data, keyframe_id)
+
     pos_target = np.array([_TARGET_ELBOW])
 
     dt       = float(sim.model.opt.timestep)

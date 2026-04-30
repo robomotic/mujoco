@@ -67,6 +67,10 @@ struct ElectricalMotorConfig {
   double tau_th = 1.0;  // s
   double T_amb = 25.0;  // °C
 
+  // ---- Drive current limit ----
+  double i_max = 0.0;           // A — peak drive current (0 = unlimited)
+  bool has_current_limit = false;
+
   // ---- Path flags ----
   bool has_rl      = false;
   bool has_thermal = false;
