@@ -126,6 +126,11 @@ class ElectricalMotor:
           peak_torque=s.peak_torque,
       )
 
+    # Clamp to drive peak current limit (stall_current = drive electronics limit).
+    if s.stall_current is not None:
+      current = float(np.clip(current, -s.stall_current, s.stall_current))
+      torque = float(np.clip(current * Kt, -s.peak_torque, s.peak_torque))
+
     if s.has_thermal and s.resistance is not None:
       self._update_thermal(current=current, dt=dt)
 
