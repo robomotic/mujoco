@@ -273,6 +273,16 @@ class SingleEnvSimulation:
           dt=dt,
           bus_voltage=bus_voltage,
       )
+      # Enforce drive current limit (stall_current = drive electronics peak).
+      # Duplicates the clamp in ElectricalMotor.compute_control as a safety
+      # net in case an older electrical_motor.py without the clamp is loaded.
+      i_max = motor.spec.stall_current
+      if i_max is not None:
+        current = float(np.clip(current, -i_max, i_max))
+        torque = float(np.clip(
+            current * motor.spec.motor_constant_kt,
+            -motor.spec.peak_torque, motor.spec.peak_torque,
+        ))
       torques[i] = torque
       currents[i] = current
       self._data.ctrl[adr] = torque
