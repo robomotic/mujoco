@@ -1,6 +1,8 @@
 name: release-python-wheel
 
-# Builds Linux x86_64 wheels for Python 3.11 and 3.12 on ubuntu-22.04.
+# Builds Linux x86_64 wheels for Python 3.11 and 3.12 on ubuntu-22.04,
+# plus a Python 3.11 wheel built inside an ubuntu:20.04 container
+# (GLIBC 2.31) for WSL2 Ubuntu 20.04 and similar older hosts.
 #
 # WHY ubuntu-22.04 + gcc-12, not ubuntu-24.04 + gcc-14:
 #   gcc-14 introduces CXXABI_1.3.15 symbols.  Colab (and most Ubuntu 22.04
@@ -8,6 +10,15 @@ name: release-python-wheel
 #   gcc-14 crash on import with "version CXXABI_1.3.15 not found".
 #   gcc-12 on ubuntu-22.04 produces binaries requiring at most CXXABI_1.3.13,
 #   which is fully compatible with the Colab runtime.
+#
+# WHY ubuntu:20.04 container for the u20 job:
+#   gcc-10 + glibc-2.31 on Ubuntu 20.04 produce binaries that load on any
+#   Ubuntu 20.04/WSL2 host.  We cannot achieve this by cross-compiling on
+#   ubuntu-22.04 because the runner's glibc (2.35) sets the minimum version.
+#   Running inside an ubuntu:20.04 Docker container on the ubuntu-22.04 runner
+#   gives us the older glibc without needing a separate self-hosted runner.
+#   actions/setup-python does not work inside container jobs, so Python 3.11
+#   is installed from the deadsnakes PPA instead.
 
 on:
   push:
@@ -109,10 +120,102 @@ jobs:
           python/dist/*.whl
           python/dist/*.tar.gz
 
+  build-ubuntu20-wheel:
+    name: Build Ubuntu 20.04 wheel (py3.11)
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TMPDIR: /tmp
+      CC: /usr/bin/gcc-10
+      CXX: /usr/bin/g++-10
+      CMAKE_ARGS: >-
+        -G Ninja
+        -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-10
+        -DCMAKE_CXX_COMPILER:STRING=/usr/bin/g++-10
+        -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: |
+        apt-get update
+        apt-get install -y \
+          software-properties-common ca-certificates git \
+          build-essential gcc-10 g++-10 \
+          cmake ninja-build \
+          libgl1-mesa-dev libgl1-mesa-glx \
+          libwayland-dev libxinerama-dev \
+          libxcursor-dev libxkbcommon-dev libxrandr-dev \
+          libxi-dev
+        add-apt-repository -y ppa:deadsnakes/ppa
+        apt-get update
+        apt-get install -y python3.11 python3.11-dev python3.11-venv
+
+    - name: Prepare Python venv
+      run: |
+        python3.11 -m venv ${TMPDIR}/venv
+        ${TMPDIR}/venv/bin/pip install --upgrade pip
+        ${TMPDIR}/venv/bin/pip install --upgrade --require-hashes \
+          -r python/build_requirements.txt
+        ${TMPDIR}/venv/bin/pip install --upgrade --require-hashes \
+          -r python/build_requirements_usd.txt
+
+    - name: Configure MuJoCo
+      run: bash ./.github/workflows/build_steps.sh configure_mujoco
+
+    - name: Build MuJoCo
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh build_mujoco
+
+    - name: Install MuJoCo
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh install_mujoco
+
+    - name: Copy plugins
+      working-directory: build
+      run: bash ../.github/workflows/build_steps.sh copy_plugins_posix
+
+    - name: Make Python sdist
+      working-directory: python
+      run: bash ../.github/workflows/build_steps.sh make_python_sdist
+
+    - name: Build Python wheel
+      working-directory: python/dist
+      run: bash ../../.github/workflows/build_steps.sh build_python_bindings
+
+    - name: Smoke test wheel
+      working-directory: python/dist
+      run: |
+        source ${TMPDIR}/venv/bin/activate
+        pip install --no-index mujoco-*.whl
+        python -c "
+        import mujoco
+        print('mujoco version:', mujoco.__version__)
+        print('plugins dir:   ', mujoco.PLUGINS_DIR)
+        "
+
+    - name: Rename wheel for Ubuntu 20.04 identification
+      working-directory: python/dist
+      run: |
+        for f in mujoco-*.whl; do
+          mv "$f" "${f%.whl}_ubuntu20.whl"
+        done
+        ls -la *.whl
+
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-wheel-${{ env.RELEASE_TAG }}-ubuntu20-py3.11
+        path: python/dist/*.whl
+
   publish-github-release:
     name: Publish GitHub release
     runs-on: ubuntu-22.04
-    needs: build-linux-wheel
+    needs: [build-linux-wheel, build-ubuntu20-wheel]
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
@@ -120,7 +223,7 @@ jobs:
     - name: Download built artifacts
       uses: actions/download-artifact@v4
       with:
-        pattern: python-wheel-${{ env.RELEASE_TAG }}-py*
+        pattern: python-wheel-${{ env.RELEASE_TAG }}-*
         merge-multiple: true
         path: dist
 
