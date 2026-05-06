@@ -144,14 +144,19 @@ jobs:
       run: |
         apt-get update
         apt-get install -y \
-          software-properties-common ca-certificates git \
+          gnupg2 curl ca-certificates git \
           build-essential gcc-10 g++-10 \
           cmake ninja-build \
           libgl1-mesa-dev libgl1-mesa-glx \
           libwayland-dev libxinerama-dev \
           libxcursor-dev libxkbcommon-dev libxrandr-dev \
           libxi-dev
-        add-apt-repository -y ppa:deadsnakes/ppa
+        # Add deadsnakes PPA manually — add-apt-repository is unreliable in
+        # minimal Docker containers (no systemd, resolv.conf is read-only).
+        curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF23C5A6CF475977595C89F51BA6932366A755776" \
+          | gpg --dearmor > /etc/apt/trusted.gpg.d/deadsnakes.gpg
+        echo "deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu focal main" \
+          > /etc/apt/sources.list.d/deadsnakes.list
         apt-get update
         apt-get install -y python3.11 python3.11-dev python3.11-venv
 
