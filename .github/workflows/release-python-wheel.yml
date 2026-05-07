@@ -134,7 +134,7 @@ jobs:
         -G Ninja
         -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-10
         -DCMAKE_CXX_COMPILER:STRING=/usr/bin/g++-10
-        -DCMAKE_CXX_STANDARD:STRING=17
+        -DCMAKE_CXX_FLAGS:STRING=-std=c++17
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
