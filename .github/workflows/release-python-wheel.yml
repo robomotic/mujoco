@@ -144,32 +144,32 @@ jobs:
       run: |
         apt-get update
         apt-get install -y \
-          gnupg2 curl ca-certificates git \
+          curl ca-certificates git \
           build-essential gcc-10 g++-10 \
           cmake ninja-build \
           libgl1-mesa-dev libgl1-mesa-glx \
           libwayland-dev libxinerama-dev \
           libxcursor-dev libxkbcommon-dev libxrandr-dev \
           libxi-dev
-        # Add deadsnakes PPA.  In a minimal Docker container (no systemd,
-        # /etc/resolv.conf read-only) add-apt-repository and gpg --dearmor
-        # both fail to produce a key that apt accepts.  apt-key add - reads
-        # the ASCII-armoured key directly and writes to /etc/apt/trusted.gpg,
-        # which Ubuntu 20.04 always reads regardless of source-list format.
-        curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF23C5A6CF475977595C89F51BA6932366A755776" \
-          | apt-key add -
-        echo "deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu focal main" \
-          > /etc/apt/sources.list.d/deadsnakes.list
-        apt-get update
-        apt-get install -y python3.11 python3.11-dev python3.11-venv
+        # deadsnakes PPA GPG verification fails consistently in this container
+        # network environment (key imported but apt never downloads Packages).
+        # Use uv instead: it downloads pre-built Python 3.11 binaries from
+        # python-build-standalone (manylinux_2_17+), which run on Ubuntu 20.04
+        # and bundle the C-extension headers needed by pip wheel.
+        curl -fsSL https://astral.sh/uv/install.sh | sh
+        echo "/root/.local/bin" >> "$GITHUB_PATH"
 
     - name: Prepare Python venv
       run: |
-        python3.11 -m venv ${TMPDIR}/venv
-        ${TMPDIR}/venv/bin/pip install --upgrade pip
-        ${TMPDIR}/venv/bin/pip install --upgrade --require-hashes \
+        uv python install 3.11
+        python311=$(uv python find 3.11)
+        echo "Python 3.11 at: $python311"
+        "$python311" --version
+        "$python311" -m venv "${TMPDIR}/venv"
+        "${TMPDIR}/venv/bin/pip" install --upgrade pip
+        "${TMPDIR}/venv/bin/pip" install --upgrade --require-hashes \
           -r python/build_requirements.txt
-        ${TMPDIR}/venv/bin/pip install --upgrade --require-hashes \
+        "${TMPDIR}/venv/bin/pip" install --upgrade --require-hashes \
           -r python/build_requirements_usd.txt
 
     - name: Configure MuJoCo
