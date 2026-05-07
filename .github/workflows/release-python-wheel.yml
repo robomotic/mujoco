@@ -147,7 +147,7 @@ jobs:
         apt-get install -y \
           curl ca-certificates git \
           build-essential gcc-10 g++-10 \
-          cmake ninja-build \
+          cmake ninja-build pkg-config \
           libgl1-mesa-dev libgl1-mesa-glx \
           libwayland-dev libxinerama-dev \
           libxcursor-dev libxkbcommon-dev libxrandr-dev \
